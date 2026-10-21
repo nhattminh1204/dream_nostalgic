@@ -11,5 +11,8 @@
     "target_seconds": [25, 35]
   },
   "default_music": "",
-  "use_clip_audio": false
+  "use_clip_audio": false,
+  "music_profile": "faded-intro",
+  "scene_seconds_target": 3.5,
+  "video_seconds_target": [15, 18]
 }

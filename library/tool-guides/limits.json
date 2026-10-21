@@ -1,0 +1,8 @@
+{
+  "_note": "Độ dài clip tối đa (giây) mỗi app video tạo được trong 1 lần. Dùng để giới hạn độ dài cảnh.",
+  "generic": 5,
+  "veo": 8,
+  "kling": 10,
+  "hailuo": 6,
+  "runway": 10
+}

@@ -1,0 +1,9 @@
+{
+  "faded-intro": {
+    "name": "Faded – Rapid Town Baby (intro không lời)",
+    "bpm": 85.0,
+    "start_offset": 0.0,
+    "intro_seconds": 30.0,
+    "note": "BPM đo từ âm thanh (85.05). start_offset và intro_seconds cần kiểm tra lại trong app khi đăng tập đầu. Khi đăng: chọn bài trong app, kéo điểm bắt đầu tới start_offset."
+  }
+}
