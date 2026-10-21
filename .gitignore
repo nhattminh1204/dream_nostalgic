@@ -1,0 +1,23 @@
+# Video tải từ nơi khác: không đưa lên repo
+Video/
+PublishedVideos/
+UnpublishedVideos/
+PLAN/
+
+# Media của từng tập (nặng, tạo lại được)
+episodes/*/images/
+episodes/*/clips/
+episodes/*/*.mp4
+episodes/*/.history/
+episodes/*/.metronome.wav
+episodes/*/.filtergraph.txt
+episodes/*/.ai-*.json
+
+# Nhạc: chỉ giữ README (file nhạc có thể có bản quyền)
+music/*
+!music/README.md
+
+# Máy cục bộ
+__pycache__/
+*.pyc
+.claude/

@@ -1,0 +1,57 @@
+[
+  {
+    "id": "night-shift",
+    "name": "Night Shift",
+    "vi": "Ca đêm: những nghề bảo trì bầu trời đêm",
+    "palette": "night-shift",
+    "characters": ["ong-moon", "sol", "golden"],
+    "objects": ["moon", "stars", "shooting-star", "milky-way", "fog", "fireflies", "jellyfish-light", "aurora", "dreams"],
+    "settings": ["rooftop", "cloud-scaffold", "lake", "observatory", "harbor", "meadow"],
+    "times": ["blue-hour", "night"],
+    "title_patterns": ["POV: your job is {verb_title} the {object} {emoji}", "Night shift at the {object} factory {emoji}", "Someone has to keep the {object} running {emoji}"]
+  },
+  {
+    "id": "cloud-bakery",
+    "name": "Cloud Bakery",
+    "vi": "Tiệm bánh mây: làm bánh từ mây, tuyết, cầu vồng",
+    "palette": "cotton-morning",
+    "characters": ["may", "golden"],
+    "objects": ["clouds", "pink-clouds", "snowflakes", "rainbow", "sunbeams", "lightning"],
+    "settings": ["bakery", "meadow", "cloud-scaffold", "laundry-yard"],
+    "times": ["dawn", "morning", "golden-hour"],
+    "title_patterns": ["The bakery that bakes {object} {emoji}", "5am at the {object} bakery {emoji}", "How {object} are made {emoji}"]
+  },
+  {
+    "id": "pho-mo",
+    "name": "Phố Mơ",
+    "vi": "Phố Mơ: hoài niệm Việt Nam, nghề phố cổ và chợ quê",
+    "palette": "pho-mo",
+    "characters": ["may"],
+    "objects": ["clouds", "rain", "lanterns-moon", "fireflies", "sunbeams", "dreams", "milky-way"],
+    "settings": ["vn-old-quarter", "vn-countryside-market", "vn-rice-field"],
+    "times": ["morning", "golden-hour", "sunset", "blue-hour"],
+    "title_patterns": ["In this town, they sell {object} {emoji}", "The old man who {verb_past} the {object} {emoji}", "Childhood job nobody remembers: {verb_title} {object} {emoji}"]
+  },
+  {
+    "id": "seasons-crew",
+    "name": "Seasons Crew",
+    "vi": "Đội chuyển mùa: những người thay mùa cho thế giới",
+    "palette": "golden-hour",
+    "characters": ["sol", "may", "golden"],
+    "objects": ["seasons", "sunbeams", "snowflakes", "rainbow", "pink-clouds", "sun", "rain"],
+    "settings": ["suburb", "meadow", "laundry-yard", "railway", "workshop"],
+    "times": ["morning", "noon", "golden-hour", "sunset"],
+    "title_patterns": ["The crew that changes the seasons {emoji}", "Packing up summer for next year {emoji}", "POV: you {verb_title} the {object} for a living {emoji}"]
+  },
+  {
+    "id": "rainbow-laundry",
+    "name": "Rainbow Laundry",
+    "vi": "Tiệm giặt cầu vồng: giặt, ủi, phơi những thứ ánh sáng",
+    "palette": "rainbow-laundry",
+    "characters": ["ba-suong", "may"],
+    "objects": ["rainbow", "aurora", "sunbeams", "milky-way", "clouds"],
+    "settings": ["laundry-yard", "workshop", "greenhouse", "meadow"],
+    "times": ["morning", "noon", "golden-hour"],
+    "title_patterns": ["Laundry day for the {object} {emoji}", "Someone has to wash the {object} {emoji}", "POV: your job is {verb_title} the {object} {emoji}"]
+  }
+]

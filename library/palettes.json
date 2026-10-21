@@ -1,0 +1,38 @@
+{
+  "_note": "prompt_phrase được chèn thẳng vào prompt ảnh. grade = bộ lọc ffmpeg riêng cho bảng màu (để trống = dùng film look mặc định).",
+  "cotton-morning": {
+    "name": "Cotton Morning",
+    "use": "Cloud Bakery, buổi sáng, cảnh trong nhà sáng",
+    "colors": {"cream": "#F6EAD7", "powder-pink": "#F4C6CF", "mint": "#BFE3D0", "sky": "#A9C8E8"},
+    "prompt_phrase": "soft pastel palette of warm cream, powder pink, mint green and pale sky blue",
+    "grade": "colorbalance=rh=0.02:bh=0.01"
+  },
+  "golden-hour": {
+    "name": "Golden Hour",
+    "use": "Phố ngoại ô, giao hàng, chiều muộn",
+    "colors": {"sun": "#F2C46D", "peach": "#E8957A", "skin": "#F7D9C4", "leaf": "#7FA37A"},
+    "prompt_phrase": "warm golden-hour palette of honey yellow, peach, soft skin tones and sage green",
+    "grade": "colorbalance=rm=0.04:bm=-0.04:rh=0.05:bh=-0.04"
+  },
+  "night-shift": {
+    "name": "Night Shift",
+    "use": "Trăng, sao, sứa, cảnh đêm",
+    "colors": {"night": "#1E2A4A", "indigo": "#3D4F7C", "moonlight": "#F3E9C6", "mist-pink": "#E9B7D0"},
+    "prompt_phrase": "blue-hour palette of deep navy, indigo, moonlight cream and dusty pink accents",
+    "grade": "colorbalance=bs=0.04:rh=0.03:bh=-0.02"
+  },
+  "rainbow-laundry": {
+    "name": "Rainbow Laundry",
+    "use": "Cầu vồng, ánh sáng, vải, trong nhà trắng",
+    "colors": {"white": "#FFFFFF", "lilac": "#D9D2E9", "rainbow": "pastel rainbow at 60% intensity"},
+    "prompt_phrase": "airy white and lilac palette with soft desaturated pastel rainbow accents",
+    "grade": "eq=brightness=0.02"
+  },
+  "pho-mo": {
+    "name": "Phố Mơ",
+    "use": "Hoài niệm Việt Nam: phố cổ, chợ quê, xe đạp",
+    "colors": {"old-wall": "#E7C27D", "door-teal": "#7FB3A6", "roof-red": "#C8553D", "do-paper": "#F3E3C3"},
+    "prompt_phrase": "nostalgic Vietnamese palette of faded ochre walls, teal wooden shutters, terracotta roof tiles and rice-paper cream",
+    "grade": "colorbalance=rm=0.03:bm=-0.03"
+  }
+}
