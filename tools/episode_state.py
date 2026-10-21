@@ -10,11 +10,15 @@ Dùng bởi agent Antigravity (qua dòng lệnh), Studio (tools/web.py) và tool
   python tools/episode_state.py lock ep001 3        # hoặc: lock ep001 all
   python tools/episode_state.py unlock ep001 3
 """
+import argparse
 import copy
+import json
 import math
+import sys
 import time
+from pathlib import Path
 
-from common import LIB, config, load_json, save_json
+from common import EPISODES, LIB, config, load_json, save_json
 
 FPS = 30
 HEAD_TRIM = 0.5
@@ -270,3 +274,201 @@ def next_step(s, ep_dir):
     by = {"idea": "ai", "storyboard": "user", "image_prompts": "ai", "images": "user",
           "video_prompts": "ai", "clips": "user", "final": "user", "published": "done"}[ph]
     return {"phase": ph, "by": by, "message": msg}
+
+
+# ---------- kiểm tra & ghi kết quả AI ----------
+KINDS = ("storyboard", "image_prompts", "video_prompts", "seo")
+
+
+def _known_characters():
+    return {p.stem for p in (LIB / "characters").glob("*.md")}
+
+
+def _known_angles():
+    return {a["id"] for a in load_json(LIB / "materials.json")["angles"]}
+
+
+def _hashtags(tags):
+    return ["#" + t.strip().lstrip("#") for t in tags if t.strip().lstrip("#")]
+
+
+def validate(s, kind, data):
+    if kind not in KINDS:
+        return {}, [f"Loại kết quả không hợp lệ: {kind}"], []
+    errors, warnings = [], []
+    if kind == "storyboard":
+        expected = plan_for(s)["scenes"]
+        shots = data.get("shots") or []
+        if len(shots) != expected:
+            errors.append(f"Cần đúng {expected} cảnh, AI trả {len(shots)} cảnh.")
+        chars, angles = _known_characters(), _known_angles()
+        clean = []
+        for i, sh in enumerate(shots, 1):
+            angle = sh.get("angle", "")
+            if angle not in angles:
+                warnings.append(f"Cảnh {i}: góc máy '{angle}' không có, đổi thành 'medium'.")
+                angle = "medium"
+            unknown = [c for c in sh.get("characters", []) if c not in chars]
+            if unknown:
+                warnings.append(f"Cảnh {i}: bỏ nhân vật không tồn tại: {', '.join(unknown)}.")
+            scene = (sh.get("scene_vi") or "").strip()
+            if not scene:
+                errors.append(f"Cảnh {i}: thiếu mô tả cảnh (scene_vi).")
+            clean.append({"n": i, "angle": angle, "scene_vi": scene,
+                          "characters": [c for c in sh.get("characters", []) if c in chars]})
+        out = {"shots": clean}
+        for k in ("title", "description"):
+            if k in data:
+                out[k] = str(data[k]).strip()
+        if "hashtags" in data:
+            out["hashtags"] = _hashtags(data["hashtags"])
+        return out, errors, warnings
+    if kind == "seo":
+        title = str(data.get("title", "")).strip()
+        if not title:
+            errors.append("Thiếu tiêu đề.")
+        if len(title) > 100:
+            errors.append("Tiêu đề quá 100 ký tự.")
+        return {"title": title, "description": str(data.get("description", "")).strip(),
+                "hashtags": _hashtags(data.get("hashtags", []))}, errors, warnings
+    field = "image_prompt" if kind == "image_prompts" else "motion_prompt"
+    existing = {sh["n"] for sh in s["shots"]}
+    clean = []
+    for item in data.get("shots") or []:
+        n = item.get("n")
+        if n not in existing:
+            errors.append(f"Không có cảnh {n}.")
+            continue
+        text = str(item.get(field, "")).strip()
+        if not text:
+            errors.append(f"Cảnh {n}: {field} rỗng.")
+            continue
+        row = {"n": n, field: text}
+        if kind == "image_prompts":
+            row["negative"] = str(item.get("negative", "")).strip()
+        clean.append(row)
+    if not clean and not errors:
+        errors.append("Không có cảnh nào trong kết quả.")
+    return {"shots": clean}, errors, warnings
+
+
+def apply(s, kind, data, overwrite_edited=False):
+    clean, errors, warnings = validate(s, kind, data)
+    if errors:
+        raise StateError("\n".join(errors))
+    if kind == "storyboard":
+        plan = plan_for(s)
+        old = {sh["n"]: sh for sh in s["shots"]}
+        keep_old = bool(s.get("storyboard_approved")) and len(old) == len(clean["shots"])
+        new_shots = []
+        for sh in clean["shots"]:
+            prev = old.get(sh["n"]) if keep_old else None
+            same = prev is not None and all(prev[k] == sh[k] for k in ("angle", "scene_vi", "characters"))
+            base = copy.deepcopy(prev) if same else {**copy.deepcopy(SHOT_DEFAULTS), "n": sh["n"]}
+            base.update(sh)
+            new_shots.append(base)
+        s["shots"] = new_shots
+        s["beats_per_scene"] = plan["beats_per_scene"]
+        if not keep_old:
+            s["storyboard_approved"] = False
+        warnings += plan["warnings"]
+        for k in ("title", "description", "hashtags"):
+            if k in clean:
+                s[k] = clean[k]
+        return warnings
+    if kind == "seo":
+        s.update(clean)
+        return warnings
+    field = "image_prompt" if kind == "image_prompts" else "motion_prompt"
+    for row in clean["shots"]:
+        sh = _shot(s, row["n"])
+        if field in sh["edited"] and not overwrite_edited:
+            warnings.append(f"Cảnh {row['n']}: giữ {field} bạn đã sửa tay.")
+            continue
+        sh[field] = row[field]
+        if field in sh["edited"]:
+            sh["edited"].remove(field)
+        if kind == "image_prompts":
+            sh["negative"] = row["negative"]
+        else:
+            sh["motion_stale"] = False
+    return warnings
+
+
+def approve(s):
+    if not s["shots"]:
+        raise StateError("Chưa có phân cảnh để duyệt.")
+    s["storyboard_approved"] = True
+    return s
+
+
+# ---------- dòng lệnh (cho agent Antigravity) ----------
+def _ep_dir(arg):
+    p = Path(arg)
+    d = p if (p / "script.json").exists() else EPISODES / arg
+    if not (d / "script.json").exists():
+        raise StateError(f"Không tìm thấy tập {arg}")
+    return d
+
+
+def _print(obj):
+    print(json.dumps(obj, ensure_ascii=False, indent=2))
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="Trạng thái tập Dreamnostalgic")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    for name in ("phase", "plan", "show", "approve"):
+        sub.add_parser(name).add_argument("ep")
+    a = sub.add_parser("apply")
+    a.add_argument("ep")
+    a.add_argument("kind", choices=KINDS)
+    a.add_argument("file")
+    a.add_argument("--overwrite-edited", action="store_true")
+    lk = sub.add_parser("lock")
+    lk.add_argument("ep")
+    lk.add_argument("n")
+    ul = sub.add_parser("unlock")
+    ul.add_argument("ep")
+    ul.add_argument("n", type=int)
+    args = ap.parse_args(argv)
+
+    try:
+        d = _ep_dir(args.ep)
+        s = load(d)
+        v = s["version"]
+        if args.cmd == "phase":
+            if sync(s, d):
+                s = save(d, s, v)
+            _print(next_step(s, d))
+        elif args.cmd == "plan":
+            plan = plan_for(s)
+            bpm = music_profile(s.get("music_profile"))["bpm"]
+            n = len(s["shots"]) or plan["scenes"]
+            bps = s["beats_per_scene"] or plan["beats_per_scene"]
+            _print({**plan, "scenes": n, "beats_per_scene": bps, "cuts": cut_times(bps, n, bpm),
+                    "max_clip": max_clip_seconds(s.get("video_tool") or config().get("video_tool"))})
+        elif args.cmd == "show":
+            _print(s)
+        elif args.cmd == "approve":
+            save(d, approve(s), v)
+            print("Đã duyệt phân cảnh.")
+        elif args.cmd == "apply":
+            data = json.loads(Path(args.file).read_text(encoding="utf-8"))
+            warnings = apply(s, args.kind, data, args.overwrite_edited)
+            save(d, s, v)
+            print(f"Đã ghi {args.kind} vào {d.name}.")
+            for w in warnings:
+                print("Lưu ý:", w)
+        elif args.cmd == "lock":
+            save(d, lock_all(s, d) if args.n == "all" else lock(s, d, int(args.n)), v)
+            print("Đã chốt ảnh.")
+        elif args.cmd == "unlock":
+            save(d, unlock(s, args.n), v)
+            print(f"Đã bỏ chốt cảnh {args.n}.")
+    except StateError as e:
+        sys.exit(f"Lỗi: {e}")
+
+
+if __name__ == "__main__":
+    main()
