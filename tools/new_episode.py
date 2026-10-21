@@ -33,12 +33,35 @@ def make_title(pattern, verb, obj):
     return pattern.format(verb_title=verb["ing"], verb_past=verb["s"], object=obj["short"], emoji=obj["emoji"])
 
 
+def build_script(ep_id, series, verb_id, obj_id, setting, time, title, logline, custom_idea, cfg):
+    return {
+        "id": ep_id,
+        "version": 1,
+        "series": series["id"],
+        "palette": series["palette"],
+        "characters": series["characters"],
+        "concept": {"verb": verb_id, "object": obj_id, "setting": setting, "time": time,
+                    "logline_vi": logline, "custom_idea": custom_idea},
+        "title": title,
+        "description": "",
+        "hashtags": [],
+        "image_tool": cfg.get("image_tool") or "generic",
+        "video_tool": cfg.get("video_tool") or "generic",
+        "music_profile": cfg.get("music_profile", ""),
+        "storyboard_approved": False,
+        "beats_per_scene": None,
+        "status": "draft",
+        "shots": [],
+    }
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--series")
     ap.add_argument("--object")
     ap.add_argument("--verb")
     ap.add_argument("--seed", type=int)
+    ap.add_argument("--idea", default="", help="ý tưởng tự gõ (AI ưu tiên khi viết phân cảnh)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--json", action="store_true", help="in kết quả dạng JSON (dùng cho giao diện web)")
     args = ap.parse_args()
@@ -87,24 +110,9 @@ def main():
     for sub in ("images", "clips"):
         (d / sub).mkdir(parents=True, exist_ok=True)
 
-    save_json(d / "script.json", {
-        "id": ep_id,
-        "series": series["id"],
-        "palette": series["palette"],
-        "characters": series["characters"],
-        "concept": {
-            "verb": verb_id, "object": obj_id, "setting": setting["id"], "time": time["id"],
-            "logline_vi": f"{verb['vi'].capitalize()} {obj['vi']}, {setting['vi']}, {time['vi']}",
-        },
-        "title": title,
-        "description": "",
-        "hashtags": [],
-        "image_tool": cfg.get("image_tool") or "generic",
-        "video_tool": cfg.get("video_tool") or "generic",
-        "music": cfg.get("default_music", ""),
-        "status": "draft",
-        "shots": [],
-    })
+    save_json(d / "script.json", build_script(
+        ep_id, series, verb_id, obj_id, setting["id"], time["id"], title,
+        result["logline_vi"], args.idea.strip(), cfg))
 
     with LOG.open("a", encoding="utf-8") as f:
         f.write(f"| {ep_id} | {series['id']} | {verb_id} | {obj_id} | {title} | draft | |\n")
@@ -112,7 +120,7 @@ def main():
     if args.json:
         print(json.dumps({**result, "id": ep_id}, ensure_ascii=False))
     else:
-        print(f"\nĐã tạo {d}\nBước tiếp: skill episode-script điền 'shots' trong script.json.")
+        print(f"\nĐã tạo {d}\nBước tiếp: gọi /dream {ep_id} để viết phân cảnh.")
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@
 import subprocess
 import sys
 
-from assemble import find_clip
+from episode_state import find_clip
 from common import episode_dir, ffmpeg_exe
 
 
@@ -13,7 +13,7 @@ def main():
     if len(sys.argv) != 3:
         sys.exit("Cách dùng: python tools/flip.py <ep_id> sNN")
     d = episode_dir(sys.argv[1])
-    clip = find_clip(d / "clips", int(sys.argv[2].lstrip("s")))
+    clip = find_clip(d, int(sys.argv[2].lstrip("s")))
     if not clip:
         sys.exit("Không tìm thấy clip.")
     orig = clip.with_name(clip.stem + ".orig" + clip.suffix)

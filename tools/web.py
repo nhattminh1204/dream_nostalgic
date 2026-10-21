@@ -18,7 +18,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
-from assemble import find_clip
+import episode_state as es
 from common import EPISODES, LIB, LOG, ROOT, by_id, config, load_json, save_json
 
 WEB = ROOT / "web"
@@ -31,16 +31,13 @@ EDITABLE_META = ("title", "description", "hashtags", "status", "link", "music")
 EDITABLE_CONFIG = ("image_tool", "video_tool", "default_music", "use_clip_audio")
 
 
-def find_image(d, n):
-    for ext in IMAGE_EXTS:
-        p = d / "images" / f"s{n:02d}{ext}"
-        if p.exists():
-            return p
-    return None
-
-
 def rel(p):
-    return p.relative_to(ROOT).as_posix() if p else None
+    if not p:
+        return None
+    try:
+        return p.relative_to(ROOT).as_posix()
+    except ValueError:
+        return p.as_posix()
 
 
 def run_tool(script, *args):
@@ -51,12 +48,13 @@ def run_tool(script, *args):
 
 
 def episode_summary(d, full=False):
-    s = load_json(d / "script.json")
+    s = es.load(d)
+    secs = es.shot_seconds(s)
     shots = []
-    for sh in sorted(s.get("shots", []), key=lambda x: x["n"]):
-        item = {**sh} if full else {"n": sh["n"]}
-        item["image"] = rel(find_image(d, sh["n"]))
-        item["clip"] = rel(find_clip(d / "clips", sh["n"]))
+    for sh, sec in zip(s["shots"], secs):
+        item = {**sh, "dur": sec, "role": f"{s['beats_per_scene']} phách"} if full else {"n": sh["n"]}
+        item["image"] = rel(es.find_image(d, sh["n"]))
+        item["clip"] = rel(es.find_clip(d, sh["n"]))
         shots.append(item)
     out = {k: v for k, v in s.items() if k != "shots"} if full else {
         k: s.get(k) for k in ("id", "series", "title", "status", "palette", "link")}
