@@ -140,3 +140,133 @@ def shot_seconds(s):
     bpm = music_profile(s.get("music_profile"))["bpm"]
     cuts = cut_times(s["beats_per_scene"], len(s["shots"]), bpm)
     return [round(cuts[i + 1] - cuts[i], 6) for i in range(len(s["shots"]))]
+
+
+# ---------- file & chốt ảnh ----------
+IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp")
+CLIP_EXTS = (".mp4", ".mov", ".webm", ".mkv")
+PHASES = ("idea", "storyboard", "image_prompts", "images", "video_prompts", "clips", "final", "published")
+
+
+def _find(folder, n, exts):
+    for ext in exts:
+        p = folder / f"s{n:02d}{ext}"
+        if p.exists():
+            return p
+    return None
+
+
+def find_image(ep_dir, n):
+    return _find(ep_dir / "images", n, IMAGE_EXTS)
+
+
+def find_clip(ep_dir, n):
+    return _find(ep_dir / "clips", n, CLIP_EXTS)
+
+
+def file_sig(p):
+    st = p.stat()
+    return f"{st.st_size}:{int(st.st_mtime)}"
+
+
+def _shot(s, n):
+    for sh in s["shots"]:
+        if sh["n"] == n:
+            return sh
+    raise StateError(f"Không có cảnh {n}.")
+
+
+def is_locked(ep_dir, sh):
+    rel = sh.get("locked_image")
+    if not rel:
+        return False
+    p = ep_dir / rel
+    return p.exists() and sh.get("locked_sig") == file_sig(p)
+
+
+def _mark_stale(s, n):
+    for m in (n - 1, n, n + 1):
+        for sh in s["shots"]:
+            if sh["n"] == m and sh["motion_prompt"]:
+                sh["motion_stale"] = True
+
+
+def lock(s, ep_dir, n):
+    sh = _shot(s, n)
+    img = find_image(ep_dir, n)
+    if not img:
+        raise StateError(f"Cảnh {n} chưa có ảnh để chốt.")
+    sh["locked_image"] = img.relative_to(ep_dir).as_posix()
+    sh["locked_sig"] = file_sig(img)
+    return s
+
+
+def lock_all(s, ep_dir):
+    missing = [sh["n"] for sh in s["shots"] if not find_image(ep_dir, sh["n"])]
+    if missing:
+        raise StateError("Chưa có ảnh cho cảnh: " + ", ".join(map(str, missing)))
+    for sh in s["shots"]:
+        lock(s, ep_dir, sh["n"])
+    return s
+
+
+def unlock(s, n):
+    sh = _shot(s, n)
+    sh["locked_image"] = None
+    sh["locked_sig"] = None
+    _mark_stale(s, n)
+    return s
+
+
+def sync(s, ep_dir):
+    changed = False
+    for sh in s["shots"]:
+        if sh["locked_image"] and not is_locked(ep_dir, sh):
+            unlock(s, sh["n"])
+            changed = True
+    return changed
+
+
+# ---------- giai đoạn ----------
+def phase(s, ep_dir):
+    shots = s["shots"]
+    if not shots:
+        return "idea"
+    if not s.get("storyboard_approved"):
+        return "storyboard"
+    if any(not sh["image_prompt"] for sh in shots):
+        return "image_prompts"
+    if any(not is_locked(ep_dir, sh) for sh in shots):
+        return "images"
+    if any(not sh["motion_prompt"] or sh["motion_stale"] for sh in shots):
+        return "video_prompts"
+    if any(not find_clip(ep_dir, sh["n"]) for sh in shots):
+        return "clips"
+    if s.get("status") == "published" and (ep_dir / "final.mp4").exists():
+        return "published"
+    return "final"
+
+
+def next_step(s, ep_dir):
+    ph = phase(s, ep_dir)
+    shots = s["shots"]
+    if ph == "images":
+        todo = [sh["n"] for sh in shots if not is_locked(ep_dir, sh)]
+        msg = "Tạo, thả và chốt ảnh cảnh: " + ", ".join(map(str, todo))
+    elif ph == "clips":
+        todo = [sh["n"] for sh in shots if not find_clip(ep_dir, sh["n"])]
+        msg = "Tạo và thả clip cảnh: " + ", ".join(map(str, todo))
+    elif ph == "final":
+        msg = ("Đã có video: điền thông tin và đăng." if (ep_dir / "final.mp4").exists()
+               else "Dựng video (Studio hoặc python tools/assemble.py), hoặc ghép nơi khác rồi tải final.mp4 lên.")
+    else:
+        msg = {
+            "idea": "Viết phân cảnh.",
+            "storyboard": "Duyệt hoặc sửa bảng phân cảnh.",
+            "image_prompts": "Viết prompt ảnh.",
+            "video_prompts": "Viết prompt video dựa trên ảnh đã chốt.",
+            "published": "Hoàn tất.",
+        }[ph]
+    by = {"idea": "ai", "storyboard": "user", "image_prompts": "ai", "images": "user",
+          "video_prompts": "ai", "clips": "user", "final": "user", "published": "done"}[ph]
+    return {"phase": ph, "by": by, "message": msg}
