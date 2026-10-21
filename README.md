@@ -13,17 +13,19 @@ Những nghề không có thật, ở một tuổi thơ chưa từng tồn tại
 ## Cấu trúc
 ```
 .agent/rules/        quy tắc nền (luôn áp dụng)
-.agent/skills/       episode-script · prompt-writer · assemble-video · seo-metadata · qc-review
-.agent/workflows/    /new-episode · /weekly-batch
+.agent/skills/       dream · prompt-writer · assemble-video · seo-metadata · qc-review
+.agent/workflows/    /dream · /new-episode · /weekly-batch
 library/             kiến thức: chất liệu, series, bảng màu, nhân vật, từ vựng prompt, hướng dẫn từng công cụ, nhật ký tập
+  guides/            hướng dẫn sáng tạo dùng chung: phân cảnh, prompt ảnh, prompt video, SEO
+  music-profiles.json  hồ sơ nhạc (BPM, start_offset, độ dài intro) để cắt đúng phách
   characters/<id>/   ảnh ref-sheet của nhân vật (bạn tạo)
-  style-anchors/     ảnh chuẩn phong cách (bạn tạo, KHÔNG dùng khung hình từ Video/)
+  style-anchors/     ảnh chuẩn phong cách (bạn tạo, KHÔNG dùng khung hình từ video tải về)
   brand/endcard.png  logo cuối video (tùy chọn, PNG nền trong suốt)
   lut/film.cube      LUT film look (tùy chọn)
 music/               nhạc bạn có quyền dùng
 episodes/epNNN/      script.json · prompts.md · images/ · clips/ · final.mp4
-tools/               script Python (không phụ thuộc IDE)
-Video/               tư liệu tham khảo phong cách, chỉ để xem, không dùng làm chất liệu
+tools/               script Python (không phụ thuộc IDE); episode_state.py là bộ não của /dream
+tests/               kiểm thử: python -m unittest discover -s tests
 ```
 
 ## Giao diện web (Studio)
@@ -40,18 +42,22 @@ Kịch bản và prompt vẫn do agent trong Antigravity viết. Web chỉ hiể
 |---|---|
 | Tạo tập mới | `python tools/new_episode.py [--series night-shift] [--dry-run]` |
 | Xuất bảng prompt | `python tools/export_prompts.py ep001` |
-| Dựng bản xem nhanh | `python tools/assemble.py ep001 --preview` |
-| Dựng bản cuối | `python tools/assemble.py ep001 [--music music/x.mp3] [--clip-audio]` |
+| Giai đoạn của tập | `python tools/episode_state.py phase ep001` |
+| Số cảnh, điểm cắt | `python tools/episode_state.py plan ep001` |
+| Chốt ảnh | `python tools/episode_state.py lock ep001 all` |
+| Dựng bản xem nhanh + kiểm tra nhịp | `python tools/assemble.py ep001 --preview --metronome` |
+| Dựng bản cuối (không nhạc) | `python tools/assemble.py ep001` |
 | Lật ngang 1 clip | `python tools/flip.py ep001 s03` |
 
-## Quy trình một tập (linh hoạt)
-`/new-episode` → script.json + prompts.md → **bạn** tạo ảnh (`images/sNN.png`) → duyệt → **bạn** tạo clip (`clips/sNN.mp4`) → `assemble.py` → duyệt → đăng (thêm nhạc trong app nếu chưa có).
+## Quy trình một tập (/dream)
+Gọi `/dream` trong Antigravity (hoặc `/dream ep003` để làm tiếp). Mỗi lần gọi, AI làm đúng một bước rồi dừng:
 
-Không bước nào bắt buộc:
-- Ảnh và clip tạo ở **bất kỳ web/app nào**, Studio chỉ nhận file về.
-- **Bỏ qua ảnh** nếu bạn tạo clip thẳng từ prompt (text-to-video).
-- **Ghép video ở nơi khác** (CapCut, web AI…) rồi tải `final.mp4` lên trong tab “Video & đăng”, hoặc lưu thẳng vào `episodes/<id>/final.mp4`.
-- Không cần dùng Studio: lưu file đúng tên vào thư mục tập là đủ.
+ý tưởng → **phân cảnh** (bạn duyệt) → prompt ảnh → **bạn tạo & chốt ảnh** → prompt video (AI xem ảnh đã chốt) → **bạn tạo clip** → dựng (hard cut theo nhịp) → đăng (chọn nhạc trong app, kéo tới `start_offset`).
+
+- Mọi cảnh dài bằng nhau (~3s), 6 cảnh, ~17s, cắt đúng phách đoạn intro của bài nhạc (`library/music-profiles.json`, hiện 85 BPM).
+- Mỗi cảnh bắt buộc có ảnh đã chốt và clip; ảnh/clip làm ở web nào cũng được.
+- Kiểm tra khớp nhịp: `python tools/assemble.py ep003 --preview --metronome`.
+- Trạng thái tập: `python tools/episode_state.py phase ep003`.
 
 ## Mở rộng
 - Thêm chất liệu: sửa `library/materials.json` (vật thể mới nhớ khai báo `verbs` phù hợp).

@@ -1,29 +1,27 @@
 ---
 name: assemble-video
-description: Dựng video hoàn chỉnh (final.mp4) cho một tập Dreamnostalgic từ các clip đã tạo: cắt độ dài, crop 9:16, film look, nhạc, endcard. Dùng khi người dùng đã có clip và muốn ghép, xem thử, hoặc lật ngang một clip.
+description: Dựng video hoàn chỉnh (final.mp4) cho một tập Dreamnostalgic từ các clip: hard cut đúng phách nhạc, crop 9:16, film look, tiếng gõ nhịp để kiểm tra. Dùng khi người dùng đã có đủ clip và muốn dựng, xem thử, hoặc lật ngang một clip của chính họ.
 ---
 
 # Dựng video
 
 ## Kiểm tra trước
-- Clip đặt đúng tên: `episodes/<ep_id>/clips/s01.mp4`, `s02.mp4`… (đuôi .mp4/.mov/.webm/.mkv đều được), khớp `n` trong script.json.
-- Nếu người dùng tải về với tên khác: đề xuất đổi tên theo thứ tự cảnh, hỏi lại nếu không chắc cảnh nào là cảnh nào.
-- Lần đầu chạy trên máy: `pip install -r tools/requirements.txt` (nếu chưa có ffmpeg trong PATH).
+- `python tools/episode_state.py phase <ep_id>` phải là `final` (đủ ảnh đã chốt và clip). Nếu chưa, nói người dùng còn thiếu gì.
+- Clip đặt đúng tên `episodes/<ep_id>/clips/s01.mp4`, `s02.mp4`… (.mp4/.mov/.webm/.mkv đều được). Người dùng tải về tên khác: đề xuất đổi tên theo thứ tự cảnh, hỏi lại nếu không chắc.
 
 ## Lệnh
 | Mục đích | Lệnh |
 |---|---|
-| Bản xem nhanh 540×960 | `python tools/assemble.py <ep_id> --preview` |
-| Bản cuối 1080×1920 | `python tools/assemble.py <ep_id>` |
-| Kèm nhạc | `... --music music/<file>.mp3` (hoặc điền `music` trong script.json) |
-| Giữ âm thanh gốc của clip | `... --clip-audio` (khi có nhạc, âm gốc được trộn nhỏ ở 35%) |
-| Lật ngang 1 clip của tập | `python tools/flip.py <ep_id> s03` (giữ bản `.orig`) |
+| Xem nhanh + kiểm tra nhịp | `python tools/assemble.py <ep_id> --preview --metronome` |
+| Bản cuối 1080×1920 (không nhạc) | `python tools/assemble.py <ep_id>` |
+| Giữ âm thanh gốc của clip | `... --clip-audio` |
+| Nhạc có quyền dùng | `... --music music/<file>.mp3` |
+| Lật ngang 1 clip của tập | `python tools/flip.py <ep_id> s03` |
 
 ## Ghi chú
-- Độ dài mỗi cảnh = `dur` trong script.json (hoặc ngắn hơn nếu clip ngắn hơn). Muốn đổi nhịp: sửa `dur` rồi dựng lại.
-- Film look: dùng `library/lut/film.cube` nếu có, kèm `grade` của palette. Muốn tăng giảm hạt phim hay độ bạc màu: sửa hằng `FILM_LOOK` trong `tools/assemble.py`.
-- Endcard: `library/brand/endcard.png` (PNG nền trong suốt) tự hiện ở 2.5s cuối.
-- Không có nhạc → video im lặng; nhắc người dùng thêm nhạc trong app Shorts khi đăng.
-- Chỉ dựng từ clip trong `episodes/`. Không bao giờ dùng file trong `Video/`.
+- Độ dài cảnh tính từ lưới phách (hồ sơ nhạc + `beats_per_scene`), mọi cảnh bằng nhau, chỉ hard cut. Mỗi clip bỏ 0,5s đầu; thiếu ≤10% tự làm chậm; thiếu hơn → báo cảnh cần tạo lại clip.
+- Film look: `library/lut/film.cube` nếu có, kèm `grade` của palette. Endcard: `library/brand/endcard.png` ở 2,5s cuối.
+- Bản cuối không có nhạc: nhắc người dùng chọn nhạc trong app và kéo tới `start_offset` của hồ sơ nhạc.
+- Chỉ dựng từ clip trong `episodes/`. Không dùng file trong `PublishedVideos/`, `UnpublishedVideos/` hay `Video/`.
 
 Sau khi dựng xong: chuyển sang skill **qc-review**.
